@@ -1,0 +1,6 @@
+*.pyc
+*.o
+*.out
+*.so
+*.a
+*.dSYM
