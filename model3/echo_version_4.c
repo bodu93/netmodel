@@ -1,5 +1,6 @@
 /*
- * prefork processes with non-lock-accept call
+ * prefork: accept in one process and using sockpair transfer connected to other
+ * processes
  * codes from UNPv3
  */
 #include <unistd.h>
@@ -22,10 +23,10 @@
 #define PROCESSESCOUNT 5
 pid_t pids[PROCESSESCOUNT];
 typedef struct {
-	pid_t 				child_pid; 			/* process id */
-	int 					child_pipefd;		/* parent's stream pipe to/from child */
-	int 					child_status;		/* 0 == ready */
-	int 					child_count;		/* # connections already handled */
+	pid_t				child_pid;			/* process id */
+	int					child_pipefd;		/* parent's stream pipe to/from child */
+	int					child_status;		/* 0 == ready */
+	int					child_count;		/* # connections already handled */
 } Child;
 Child children[PROCESSESCOUNT];
 

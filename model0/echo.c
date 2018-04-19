@@ -1,6 +1,6 @@
 /*
  * accept + block io
- * from UNPv3
+ * codes from UNPv3
  */
 #include <unistd.h>
 #include <errno.h>
