@@ -1,4 +1,4 @@
-####model 4: pre threaded
+##model 4: pre threaded
 
 using precreated threads, we accept(2) in every thread or not(accept in one thread and transfer to other threads).
 
