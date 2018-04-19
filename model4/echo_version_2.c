@@ -41,7 +41,6 @@ again:
 
 #define PORT 2018
 #define THREADSCOUNT 5
-pthread_t tids[THREADSCOUNT];
 struct bq* g_fdqueue;
 
 volatile sig_atomic_t quit;
@@ -49,11 +48,6 @@ void sigint(int signo) {
 	(void)signo;
 
 	quit = 1;
-
-	/* wait all threads quit */
-	for (int i = 0; i < THREADSCOUNT; ++i) {
-		pthread_join(tids[i], NULL);
-	}
 	bq_release(g_fdqueue);
 
 	exit(0);
@@ -61,6 +55,7 @@ void sigint(int signo) {
 
 void* thread_routine(void* thd_arg) {
 	(void)thd_arg;
+	pthread_detach(pthread_self());
 
 	/* run a busy loop to get connected fd from fd queue */
 	while (!quit) {
@@ -94,7 +89,8 @@ int main() {
 
 	g_fdqueue = bq_init(THREADSCOUNT);
 	for (int i = 0; i < THREADSCOUNT; ++i) {
-		pthread_create(&tids[i], NULL, &thread_routine, NULL);
+		pthread_t tid;
+		pthread_create(&tid, NULL, &thread_routine, NULL);
 	}
 
 	/* main thread run a busy loop to accept(2) request */

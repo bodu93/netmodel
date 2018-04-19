@@ -40,21 +40,18 @@ again:
 
 #define PORT 2018
 #define THREADSCOUNT 5
-pthread_t tids[THREADSCOUNT];
 
 volatile sig_atomic_t quit;
 void sigint(int signo) {
 	(void)signo;
 
 	quit = 1;
-	for (int i = 0; i < THREADSCOUNT; ++i) {
-		pthread_join(tids[i], NULL);
-	}
 	exit(0);
 }
 
 pthread_mutex_t accept_lock = PTHREAD_MUTEX_INITIALIZER;
 void* thread_routine(void* thdarg) {
+	pthread_detach(pthread_self());
 	int listenfd = (uintptr_t)thdarg;
 	/*
 	 * accept in every thread.
@@ -95,7 +92,8 @@ int main() {
 
 	for (int i = 0; i < THREADSCOUNT; ++i) {
 		/* thread per connection */
-		pthread_create(&tids[i], NULL, &thread_routine, (void*)(uintptr_t)listen_fd);
+		pthread_t tid;
+		pthread_create(&tid, NULL, &thread_routine, (void*)(uintptr_t)listen_fd);
 	}
 
 	/* wait user's quit signal */
