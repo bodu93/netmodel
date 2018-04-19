@@ -1,6 +1,7 @@
 /*
- * accept + block io
- * from UNPv3
+ * accept in every precreated threads with pthread mutex lock.
+ * Every thread run a busy loop until user send process a quit signal(Ctrl+C)
+ * codes from UNPv3
  */
 #include <unistd.h>
 #include <errno.h>
@@ -9,7 +10,6 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <pthread.h>
-#include <signal.h>
 
 #include <stdint.h>
 #include <string.h>
@@ -19,7 +19,6 @@
 #include "../util/util.h"
 
 #define MAXLINE 4096
-
 void handle_request(int sockfd) {
 	ssize_t n;
 	char buf[MAXLINE];
@@ -40,12 +39,18 @@ again:
 }
 
 #define PORT 2018
+#define THREADSCOUNT 5
+pthread_t tids[THREADSCOUNT];
 
 volatile sig_atomic_t quit;
 void sigint(int signo) {
 	(void)signo;
 
 	quit = 1;
+	for (int i = 0; i < THREADSCOUNT; ++i) {
+		pthread_join(tids[i], NULL);
+	}
+	exit(0);
 }
 
 pthread_mutex_t accept_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -88,14 +93,14 @@ int main() {
 	quit = 0;
 	signal(SIGINT, sigint);
 
-	for (;;) {
-		int connect_fd;
-		connect_fd = accept(listen_fd, NULL, NULL);
-
+	for (int i = 0; i < THREADSCOUNT; ++i) {
 		/* thread per connection */
-		pthread_t tid;
-		pthread_create(&tid, NULL, &thread_routine, (void*)(uintptr_t)listen_fd);
-		pthread_detach(tid);
+		pthread_create(&tids[i], NULL, &thread_routine, (void*)(uintptr_t)listen_fd);
+	}
+
+	/* wait user's quit signal */
+	for (;;) {
+		pause();
 	}
 
 	exit(0);

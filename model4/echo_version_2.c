@@ -1,6 +1,7 @@
 /*
- * accept + block io
- * from UNPv3
+ * accept in main thread and transfer
+ * connected fd through a bounded blocking queue
+ * codes from UNPv3
  */
 #include <unistd.h>
 #include <errno.h>
@@ -19,7 +20,6 @@
 #include "../util/util.h"
 
 #define MAXLINE 4096
-
 void handle_request(int sockfd) {
 	ssize_t n;
 	char buf[MAXLINE];
@@ -40,13 +40,37 @@ again:
 }
 
 #define PORT 2018
+#define THREADSCOUNT 5
+pthread_t tids[THREADSCOUNT];
+struct bq* g_fdqueue;
+
+volatile sig_atomic_t quit;
+void sigint(int signo) {
+	(void)signo;
+
+	quit = 1;
+
+	/* wait all threads quit */
+	for (int i = 0; i < THREADSCOUNT; ++i) {
+		pthread_join(tids[i], NULL);
+	}
+	bq_release(g_fdqueue);
+
+	exit(0);
+}
 
 void* thread_routine(void* thd_arg) {
-	int sockfd = (int)(uintptr_t)thd_arg;
-	handle_request(sockfd);
-	close(sockfd);
+	(void)thd_arg;
 
-	return (void*)0;
+	/* run a busy loop to get connected fd from fd queue */
+	while (!quit) {
+		int connfd = bq_get(g_fdqueue);
+		/* printf("thread got connected fd from queue: %d\n", connfd); */
+		handle_request(connfd);
+		close(connfd);
+	}
+
+	return (void*)0; /* disable warning: -Wreturn-type */
 }
 
 int main() {
@@ -65,14 +89,23 @@ int main() {
 	bind(listen_fd, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
 	listen(listen_fd, 5);
 
-	for (;;) {
-		int connect_fd;
-		connect_fd = accept(listen_fd, NULL, NULL);
+	quit = 0;
+	signal(SIGINT, sigint);
 
-		/* thread per connection */
-		pthread_t tid;
-		pthread_create(&tid, NULL, &thread_routine, (void*)(uintptr_t)connect_fd);
-		pthread_detach(tid);
+	g_fdqueue = bq_init(THREADSCOUNT);
+	for (int i = 0; i < THREADSCOUNT; ++i) {
+		pthread_create(&tids[i], NULL, &thread_routine, NULL);
+	}
+
+	/* main thread run a busy loop to accept(2) request */
+	for (;;) {
+		int connect_fd = accept(listen_fd, NULL, NULL);
+		bq_put(g_fdqueue, connect_fd);
+	}
+
+	/* wait user's quit signal */
+	for (;;) {
+		pause();
 	}
 
 	exit(0);

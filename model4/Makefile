@@ -1,5 +1,5 @@
 CC ?= clang
-CFLAGS ?= -g -Wall
+CFLAGS ?= -g -Wall -std=c11
 LIBS += -lpthread
 
 targets = echo_version_1.out echo_version_2.out
