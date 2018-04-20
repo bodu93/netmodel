@@ -11,7 +11,7 @@ endef
 
 all : $(targets)
 
-echo.out : echo.c poller.c buffer.c
+echo.out : echo.c ../util/util.c
 	$(compile)
 
 .PHONY : all clean
