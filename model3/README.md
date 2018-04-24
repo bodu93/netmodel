@@ -1,4 +1,4 @@
-##model-3: prefork(Apache model)
+## model-3: prefork(Apache model)
 
 using prefork processed, we accept(2) in every process or not(accept in one process and transfer to other processes).
 
